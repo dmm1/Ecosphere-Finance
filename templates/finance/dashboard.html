@@ -282,19 +282,20 @@
     });
 }
 
-    function fetchSavingsGoalList() {
-        fetch("{% url 'savings_goal_list' %}")
-            .then(response => response.json())
-            .then(data => {
-                let savingsGoalList = document.getElementById('savings-goal-list');
-                savingsGoalList.innerHTML = '';
-                data.savings_goals.forEach(goal => {
-                    let item = document.createElement('li');
-                    item.innerText = `${goal.name}: ${goal.target_amount} €`;
-                    savingsGoalList.appendChild(item);
-                });
+function fetchSavingsGoalList() {
+    fetch("{% url 'savings_goal_list' %}")
+        .then(response => response.json())
+        .then(data => {
+            let savingsGoalList = document.getElementById('savings-goal-list');
+            savingsGoalList.innerHTML = '';
+            data.savings_goals.forEach(goal => {
+                let item = document.createElement('li');
+                item.innerText = `${goal.goal_name}: ${goal.target_amount} €`; 
+                savingsGoalList.appendChild(item);
             });
-    }
+        });
+}
+
 
     function addSavingsGoal() {
     let savingsGoalData = {

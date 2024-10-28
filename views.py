@@ -8,17 +8,16 @@ matplotlib.use('Agg') # Use a non-interactive backend
 import base64
 from io import BytesIO
 import matplotlib.pyplot as plt
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from .forms import TransactionForm
 from .models import Transaction, Category
+from django.shortcuts import render
 from django.db.models import Sum
-
-@login_required
-def transaction_list(request):
-    transactions = Transaction.objects.filter(user=request.user)
-    return render(request, 'finance/transaction_list.html', {'transactions': transactions})
+from .models import Transaction
+from .utils import update_recurring_expenses
 
 @login_required
 def visualize_expenses(request):
@@ -47,6 +46,11 @@ def visualize_expenses(request):
     return render(request, 'finance/visualize.html', {'image': image})
 
 @login_required
+def transaction_list(request):
+    transactions = Transaction.objects.filter(user=request.user)
+    return render(request, 'finance/transaction_list.html', {'transactions': transactions})
+
+@login_required
 def add_transaction(request):
     if request.method == 'POST':
         form = TransactionForm(request.POST)
@@ -69,7 +73,11 @@ def delete_transaction(request, transaction_id):
 
 @login_required
 def edit_transaction(request, transaction_id):
-    transaction = Transaction.objects.get(pk=transaction_id)
+    transaction = get_object_or_404(Transaction, pk=transaction_id)
+
+    # Format amount for display
+    formatted_amount = "{:.2f}".format(transaction.amount).replace('.', '.')
+
     if request.method == 'POST':
         form = TransactionForm(request.POST, instance=transaction)
         if form.is_valid():
@@ -77,11 +85,29 @@ def edit_transaction(request, transaction_id):
             return redirect('transaction_list')
     else:
         form = TransactionForm(instance=transaction)
-    return render(request, 'finance/edit_transaction.html', {'form': form, 'transaction': transaction}) 
+        form.initial['amount'] = formatted_amount  # Set formatted amount to initial value for rendering
 
-# @login_required
+    # Format next_due_date for input
+    next_due_date_formatted = transaction.next_due_date.strftime('%Y-%m-%d') if transaction.next_due_date else ''
+
+    # Format transaction date for input if applicable
+    transaction_date_formatted = transaction.date.strftime('%Y-%m-%d') if transaction.date else ''
+
+    return render(request, 'finance/edit_transaction.html', {
+        'form': form,
+        'transaction': transaction,
+        'next_due_date_formatted': next_due_date_formatted,
+        'transaction_date_formatted': transaction_date_formatted,
+        'formatted_amount': formatted_amount,
+    })
+
+@login_required
 def home(request):
     if request.user.is_authenticated:
+        # Update recurring transactions
+        update_recurring_expenses()
+
+        # Retrieve the latest transactions and calculate finance metrics
         transactions = Transaction.objects.filter(user=request.user).order_by('-date')[:5]
         income = Transaction.objects.filter(user=request.user, transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
         expenses = Transaction.objects.filter(user=request.user, transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0

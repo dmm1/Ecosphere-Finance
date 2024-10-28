@@ -1,16 +1,27 @@
+# forms.py
 from django import forms
-from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm
 from .models import Transaction
 
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
-        fields = ['date', 'amount', 'category', 'transaction_type', 'description'] # Ensure 'date' is included
+        fields = ['amount', 'description', 'transaction_type', 'frequency', 'date', 'category', 'next_due_date']
         widgets = {
-            'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'amount': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Amount'}),
-            'category': forms.Select(attrs={'class': 'form-control'}),
-            'transaction_type': forms.Select(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'date': forms.DateInput(attrs={'type': 'date'}),
+            'frequency': forms.Select(choices=Transaction.FREQUENCY_CHOICES),
         }
+        labels = {
+            'amount': 'Amount',
+            'description': 'Description',
+            'transaction_type': 'Type',
+            'frequency': 'Frequency',
+            'date': 'Date',
+            'category': 'Category',
+            'next_due_date': 'Next Due Date',
+        }
+
+    def clean_amount(self):
+        amount = self.cleaned_data.get('amount')
+        if amount <= 0:
+            raise forms.ValidationError("Amount must be positive.")
+        return amount

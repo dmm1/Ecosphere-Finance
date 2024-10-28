@@ -1,12 +1,84 @@
 {% extends 'finance/base.html' %}
 
 {% block content %}
-    <div class="container">
-        <h2>Add New Transaction</h2>
-        <form method="POST">
-            {% csrf_token %}
-            {{ form.as_p }}
+<div class="container">
+    <h2>Add New Transaction</h2>
+    <form method="POST" novalidate class="row g-3">
+        {% csrf_token %}
+        
+        {% if form.errors %}
+            <div class="alert alert-danger">
+                {{ form.errors }}
+            </div>
+        {% endif %}
+        
+        {% for field in form %}
+        <div class="col-md-6">
+            <div class="form-group mb-3">
+                <label class="form-label">{{ field.label }}</label>
+                
+                {% if field.name == 'next_due_date' %}
+                    <input type="date" id="id_next_due_date" name="{{ field.name }}"
+                           class="form-control {% if field.errors %}is-invalid{% endif %}"
+                           value="{{ field.value|date:'Y-m-d' }}" 
+                           style="display: none;">
+                {% elif field.name == 'amount' %}
+                    <input type="number" 
+                           name="{{ field.name }}" 
+                           class="form-control {% if field.errors %}is-invalid{% endif %}" 
+                           id="{{ field.id_for_label }}" 
+                           value="{{ field.value|floatformat:2|stringformat:'g' }}" 
+                           step="0.01" min="0">
+                {% elif field.field.widget.input_type == 'select' %}
+                    {{ field }}
+                {% elif field.field.widget.input_type == 'textarea' %}
+                    <textarea name="{{ field.name }}" 
+                              class="form-control {% if field.errors %}is-invalid{% endif %}" 
+                              id="{{ field.id_for_label }}" 
+                              rows="3">{{ field.value|default:'' }}</textarea>
+                {% else %}
+                    <input type="{{ field.field.widget.input_type|default:'text' }}" 
+                           name="{{ field.name }}"
+                           class="form-control {% if field.errors %}is-invalid{% endif %}"
+                           id="{{ field.id_for_label }}"
+                           value="{{ field.value|default:'' }}">
+                {% endif %}
+                
+                {% if field.help_text %}
+                    <small class="form-hint">{{ field.help_text }}</small>
+                {% endif %}
+                
+                {% if field.errors %}
+                    {% for error in field.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="col-12">
+            <div class="hr-text">Actions</div>
+        </div>
+        
+        <div class="col-12">
             <button type="submit" class="btn btn-success">Add Transaction</button>
-        </form>
-    </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const frequencyField = document.getElementById('id_frequency');
+        const nextDueDateField = document.getElementById('id_next_due_date');
+
+        function toggleNextDueDate() {
+            nextDueDateField.style.display = frequencyField.value ? 'block' : 'none';
+        }
+
+        // Show/Hide next due date on load and when frequency changes
+        toggleNextDueDate();
+        frequencyField.addEventListener('change', toggleNextDueDate);
+    });
+</script>
 {% endblock %}

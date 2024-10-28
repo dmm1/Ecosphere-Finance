@@ -18,6 +18,8 @@ from django.shortcuts import render
 from django.db.models import Sum
 from .models import Transaction
 from .utils import update_recurring_expenses
+from django.utils import timezone
+from datetime import timedelta, date, datetime
 
 @login_required
 def visualize_expenses(request):
@@ -56,14 +58,15 @@ def add_transaction(request):
         form = TransactionForm(request.POST)
         if form.is_valid():
             transaction = form.save(commit=False)
-            transaction.user = request.user # Assign the current user to the transaction
+            transaction.user = request.user  # Assign the current user to the transaction
             transaction.save()
             return redirect('transaction_list')
         else:
             print(form.errors)  # Debug: Print form errors to console
     else:
         form = TransactionForm()
-    return render (request, 'finance/add_transaction.html', {'form': form})
+    
+    return render(request, 'finance/add_transaction.html', {'form': form})
 
 @login_required
 def delete_transaction(request, transaction_id):
@@ -120,15 +123,31 @@ def home(request):
             .order_by('-total_amount')[:3]
         )
 
+        # Upcoming transactions
+        upcoming_income = Transaction.objects.filter(
+            user=request.user,
+            transaction_type='income',
+            next_due_date__gte=datetime.now()
+        ).order_by('next_due_date')
+
+        upcoming_expenses = Transaction.objects.filter(
+            user=request.user,
+            transaction_type='expense',
+            next_due_date__gte=datetime.now()
+        ).order_by('next_due_date')
+
         return render(request, 'finance/home.html', {
             'transactions': transactions,
             'income': income,
             'expenses': expenses,
             'savings': savings,
             'top_categories': top_categories,
+            'upcoming_income': upcoming_income,
+            'upcoming_expenses': upcoming_expenses,
         })
     else:
         return render(request, 'finance/home.html')
+
 
 
 @login_required

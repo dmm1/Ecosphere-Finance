@@ -148,6 +148,43 @@
                 </div>
             </div>
 
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Upcoming Transactions</h3>
+                        </div>
+                        <div class="card-body">
+                            <h5>Upcoming Income</h5>
+                            {% if upcoming_income %}
+                                <ul class="list-group">
+                                    {% for transaction in upcoming_income %}
+                                        <li class="list-group-item">
+                                            {{ transaction.next_due_date }} - ${{ transaction.amount }} - {{ transaction.category }} - {{ transaction.description }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p>No upcoming income transactions.</p>
+                            {% endif %}
+            
+                            <h5>Upcoming Expenses</h5>
+                            {% if upcoming_expenses %}
+                                <ul class="list-group">
+                                    {% for transaction in upcoming_expenses %}
+                                        <li class="list-group-item">
+                                            {{ transaction.next_due_date }} - ${{ transaction.amount }} - {{ transaction.category }} - {{ transaction.description }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p>No upcoming expense transactions.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Top Spending Categories -->
             <div class="card">
                 <div class="card-header">

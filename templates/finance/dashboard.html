@@ -1,0 +1,455 @@
+{% extends "../life/base.html" %}
+{% load static %}
+
+{% block content %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<div class="container">
+    <h1>Dashboard</h1>
+    
+    <!-- Section for Incomes -->
+    <section id="income-section">
+        <h2>Einnahmen</h2>
+        <button onclick="showIncomeForm()">Neue Einnahme hinzufügen</button>
+        <ul id="income-list"></ul>
+        <div id="income-form" style="display: none;">
+            <input type="number" id="income-amount" placeholder="Betrag" required>
+            <input type="text" id="income-source" placeholder="Quelle" required>
+            <textarea id="income-description" placeholder="Beschreibung"></textarea>
+            <button onclick="addIncome()">Speichern</button>
+            <button onclick="hideIncomeForm()">Abbrechen</button>
+        </div>
+    </section>
+
+    <!-- Section for Expenses -->
+    <section id="expense-section">
+        <h2>Ausgaben</h2>
+        <button onclick="showExpenseForm()">Neue Ausgabe hinzufügen</button>
+        <ul id="expense-list"></ul>
+        <div id="expense-form" style="display: none;">
+            <input type="number" id="expense-amount" placeholder="Betrag" required>
+            <input type="text" id="expense-category" placeholder="Kategorie" required>
+            <textarea id="expense-description" placeholder="Beschreibung"></textarea>
+            <button onclick="addExpense()">Speichern</button>
+            <button onclick="hideExpenseForm()">Abbrechen</button>
+        </div>
+    </section>
+
+    <!-- Section for Budgets -->
+    <section id="budget-section">
+        <h2>Budgets</h2>
+        <button onclick="showBudgetForm()">Neues Budget hinzufügen</button>
+        <ul id="budget-list"></ul>
+        <div id="budget-form" style="display: none;">
+            <input type="text" id="budget-category" placeholder="Kategorie" required>
+            <input type="number" id="budget-limit" placeholder="Limit" required>
+            <input type="date" id="budget-start-date" placeholder="Startdatum" required>
+            <input type="date" id="budget-end-date" placeholder="Enddatum" required>
+            <button onclick="addBudget()">Speichern</button>
+            <button onclick="hideBudgetForm()">Abbrechen</button>
+        </div>
+    </section>
+
+    <!-- Section for Savings Goals -->
+    <section id="savings-goal-section">
+        <h2>Sparziele</h2>
+        <button onclick="showSavingsGoalForm()">Neues Sparziel hinzufügen</button>
+        <ul id="savings-goal-list"></ul>
+        <div id="savings-goal-form" style="display: none;">
+            <input type="text" id="savings-goal-name" placeholder="Zielname" required>
+            <input type="number" id="savings-goal-target-amount" placeholder="Zielbetrag" required>
+            <input type="number" id="savings-goal-current-amount" placeholder="Aktueller Betrag" required>
+            <input type="date" id="savings-goal-target-date" placeholder="Zieldatum" required>
+            <button onclick="addSavingsGoal()">Speichern</button>
+            <button onclick="hideSavingsGoalForm()">Abbrechen</button>
+        </div>
+    </section>
+
+    <!-- Section for Charts -->
+    <section id="charts-section">
+        <h2>Statistiken</h2>
+        <canvas id="expenseChart" width="400" height="200"></canvas>
+        <canvas id="incomeChart" width="400" height="200"></canvas>
+        <canvas id="budgetChart" width="400" height="200"></canvas>
+        
+    </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // CSRF-Token für AJAX-Anfragen abrufen
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Überprüfen, ob das Cookie dem gewünschten Namen entspricht
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    const csrfToken = getCookie('csrftoken');
+
+    // AJAX-Anfragen so konfigurieren, dass das CSRF-Token gesendet wird
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+                // Nur CSRF-Token für Anfragen zu unserer eigenen Domain hinzufügen
+                xhr.setRequestHeader("X-CSRFToken", csrfToken);
+            }
+        }
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchIncomeList();
+        fetchExpenseList();
+        fetchBudgetList();
+        fetchSavingsGoalList();
+        loadCharts();
+    });
+
+    // Show and hide functions for forms
+    function showIncomeForm() {
+        document.getElementById('income-form').style.display = 'block';
+    }
+
+    function hideIncomeForm() {
+        document.getElementById('income-form').style.display = 'none';
+        clearIncomeForm();
+    }
+
+    function showExpenseForm() {
+        document.getElementById('expense-form').style.display = 'block';
+    }
+
+    function hideExpenseForm() {
+        document.getElementById('expense-form').style.display = 'none';
+        clearExpenseForm();
+    }
+
+    function showBudgetForm() {
+        document.getElementById('budget-form').style.display = 'block';
+    }
+
+    function hideBudgetForm() {
+        document.getElementById('budget-form').style.display = 'none';
+        clearBudgetForm();
+    }
+
+    function showSavingsGoalForm() {
+        document.getElementById('savings-goal-form').style.display = 'block';
+    }
+
+    function hideSavingsGoalForm() {
+        document.getElementById('savings-goal-form').style.display = 'none';
+        clearSavingsGoalForm();
+    }
+
+    // Clear form inputs
+    function clearIncomeForm() {
+        document.getElementById('income-amount').value = '';
+        document.getElementById('income-source').value = '';
+        document.getElementById('income-description').value = '';
+    }
+
+    function clearExpenseForm() {
+        document.getElementById('expense-amount').value = '';
+        document.getElementById('expense-category').value = '';
+        document.getElementById('expense-description').value = '';
+    }
+
+    function clearBudgetForm() {
+        document.getElementById('budget-category').value = '';
+        document.getElementById('budget-limit').value = '';
+        document.getElementById('budget-start-date').value = '';
+        document.getElementById('budget-end-date').value = '';
+    }
+
+    function clearSavingsGoalForm() {
+        document.getElementById('savings-goal-name').value = '';
+        document.getElementById('savings-goal-target-amount').value = '';
+        document.getElementById('savings-goal-current-amount').value = '';
+        document.getElementById('savings-goal-target-date').value = '';
+    }
+
+    // Fetch and render data
+    function fetchIncomeList() {
+        fetch("{% url 'income_list' %}")
+            .then(response => response.json())
+            .then(data => {
+                let incomeList = document.getElementById('income-list');
+                incomeList.innerHTML = '';
+                data.incomes.forEach(income => {
+                    let item = document.createElement('li');
+                    item.innerText = `${income.source}: ${income.amount} €`;
+                    incomeList.appendChild(item);
+                });
+            });
+    }
+
+    function addIncome() {
+    let incomeData = {
+        amount: document.getElementById('income-amount').value,
+        source: document.getElementById('income-source').value,
+        description: document.getElementById('income-description').value
+    };
+    fetch("{% url 'income_create' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken // Include CSRF token in headers
+        },
+        body: JSON.stringify(incomeData)
+    }).then(response => response.json()).then(() => {
+        hideIncomeForm();
+        fetchIncomeList();
+        loadCharts();
+    });
+}
+
+    function fetchExpenseList() {
+        fetch("{% url 'expense_list' %}")
+            .then(response => response.json())
+            .then(data => {
+                let expenseList = document.getElementById('expense-list');
+                expenseList.innerHTML = '';
+                data.expenses.forEach(expense => {
+                    let item = document.createElement('li');
+                    item.innerText = `${expense.category}: ${expense.amount} €`;
+                    expenseList.appendChild(item);
+                });
+            });
+    }
+
+    function addExpense() {
+    let expenseData = {
+        amount: document.getElementById('expense-amount').value,
+        category: document.getElementById('expense-category').value,
+        description: document.getElementById('expense-description').value
+    };
+    fetch("{% url 'expense_create' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken // Include CSRF token in headers
+        },
+        body: JSON.stringify(expenseData)
+    }).then(response => response.json()).then(() => {
+        hideExpenseForm();
+        fetchExpenseList();
+        loadCharts();
+    });
+}
+
+    function fetchBudgetList() {
+        fetch("{% url 'budget_list' %}")
+            .then(response => response.json())
+            .then(data => {
+                let budgetList = document.getElementById('budget-list');
+                budgetList.innerHTML = '';
+                data.budgets.forEach(budget => {
+                    let item = document.createElement('li');
+                    item.innerText = `${budget.category}: ${budget.limit} €`;
+                    budgetList.appendChild(item);
+                });
+            });
+    }
+
+    function addBudget() {
+    let budgetData = {
+        category: document.getElementById('budget-category').value,
+        limit: document.getElementById('budget-limit').value,
+        start_date: document.getElementById('budget-start-date').value,
+        end_date: document.getElementById('budget-end-date').value
+    };
+    fetch("{% url 'budget_create' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken // Include CSRF token in headers
+        },
+        body: JSON.stringify(budgetData)
+    }).then(response => response.json()).then(() => {
+        hideBudgetForm();
+        fetchBudgetList();
+        loadCharts();
+    });
+}
+
+    function fetchSavingsGoalList() {
+        fetch("{% url 'savings_goal_list' %}")
+            .then(response => response.json())
+            .then(data => {
+                let savingsGoalList = document.getElementById('savings-goal-list');
+                savingsGoalList.innerHTML = '';
+                data.savings_goals.forEach(goal => {
+                    let item = document.createElement('li');
+                    item.innerText = `${goal.name}: ${goal.target_amount} €`;
+                    savingsGoalList.appendChild(item);
+                });
+            });
+    }
+
+    function addSavingsGoal() {
+    let savingsGoalData = {
+        name: document.getElementById('savings-goal-name').value,
+        target_amount: document.getElementById('savings-goal-target-amount').value,
+        current_amount: document.getElementById('savings-goal-current-amount').value,
+        target_date: document.getElementById('savings-goal-target-date').value
+    };
+    fetch("{% url 'savings_goal_create' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken // Include CSRF token in headers
+        },
+        body: JSON.stringify(savingsGoalData)
+    }).then(response => response.json()).then(() => {
+        hideSavingsGoalForm();
+        fetchSavingsGoalList();
+        loadCharts();
+    });
+}
+
+    // Load charts
+function loadCharts() {
+    Promise.all([
+        fetch("{% url 'expense_chart_data' %}"),
+        fetch("{% url 'income_chart_data' %}"),
+        fetch("{% url 'budget_chart_data' %}")
+    ]).then(responses => Promise.all(responses.map(response => response.json())))
+      .then(data => {
+          console.log(data); // Überprüfe die Struktur hier
+          renderExpenseChart(data[0].chart_data);
+          renderIncomeChart(data[1].chart_data);
+          renderBudgetChart(data[2].chart_data);
+      }).catch(error => {
+          console.error("Error loading chart data:", error);
+      });
+}
+
+
+function renderExpenseChart(chart_data) {
+    if (!chart_data || Object.keys(chart_data).length === 0) {
+        console.error("No expense data available.");
+        return;
+    }
+
+    const ctx = document.getElementById('expenseChart').getContext('2d');
+    const labels = Object.keys(chart_data);
+    const data = Object.values(chart_data);
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Expenses',
+                data: data,
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+
+
+function renderIncomeChart(chart_data) {
+    if (!chart_data || Object.keys(chart_data).length === 0) {
+        console.error("No income data available.");
+        return;
+    }
+
+    const ctx = document.getElementById('incomeChart').getContext('2d');
+    const labels = Object.keys(chart_data);
+    const data = Object.values(chart_data);
+
+    new Chart(ctx, {
+        type: 'line',  // Ändere den Typ, falls gewünscht
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Incomes',
+                data: data,
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+
+function renderBudgetChart(chart_data) {
+    if (!chart_data || Object.keys(chart_data).length === 0) {
+        console.error("No budget data available.");
+        return;
+    }
+
+    const ctx = document.getElementById('budgetChart').getContext('2d');
+    const labels = Object.keys(chart_data);
+    const data = Object.values(chart_data);
+
+    new Chart(ctx, {
+        type: 'pie',  // Ändere den Typ, falls gewünscht
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Budgets',
+                data: data,
+                backgroundColor: [
+                    'rgba(255, 206, 86, 0.2)',
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(255, 159, 64, 0.2)',
+                    // Füge bei Bedarf weitere Farben hinzu
+                ],
+                borderColor: [
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)',
+                    // Füge bei Bedarf weitere Farben hinzu
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Budget Overview'
+                }
+            }
+        }
+    });
+}
+
+</script>
+{% endblock %}

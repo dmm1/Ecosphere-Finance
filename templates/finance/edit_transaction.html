@@ -1,0 +1,124 @@
+{% extends 'finance/base.html' %}
+
+{% block content %}
+<div class="page-header d-print-none">
+    <div class="container-xl">
+        <div class="row g-2 align-items-center">
+            <div class="col">
+                <div class="page-pretitle">Transaction Management</div>
+                <h2 class="page-title">Edit Transaction</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" novalidate class="row g-3">
+                    {% csrf_token %}
+                    
+                    {% for field in form %}
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label class="form-label">{{ field.label }}</label>
+                            {% if field.field.widget.input_type == 'select' or field.field.widget.attrs.widget_type == 'select' %}
+                                <select name="{{ field.name }}" class="form-select {% if field.errors %}is-invalid{% endif %}" id="{{ field.id_for_label }}">
+                                    {{ field }}
+                                </select>
+                            {% elif field.field.widget.input_type == 'textarea' %}
+                                <textarea name="{{ field.name }}" class="form-control {% if field.errors %}is-invalid{% endif %}" 
+                                          id="{{ field.id_for_label }}" rows="3">{{ field.value|default:'' }}</textarea>
+                            {% else %}
+                                <input type="{{ field.field.widget.input_type|default:'text' }}" 
+                                       name="{{ field.name }}"
+                                       class="form-control {% if field.errors %}is-invalid{% endif %}"
+                                       id="{{ field.id_for_label }}"
+                                       value="{{ field.value|default:'' }}"
+                                       {% if field.field.widget.input_type == 'number' %}step="0.01"{% endif %}
+                                >
+                            {% endif %}
+                            
+                            {% if field.help_text %}
+                                <small class="form-hint">{{ field.help_text }}</small>
+                            {% endif %}
+                            
+                            {% if field.errors %}
+                                {% for error in field.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    <div class="col-12">
+                        <div class="hr-text">Actions</div>
+                    </div>
+                    
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="btn-list">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="ti ti-device-floppy me-2"></i>
+                                    Save Changes
+                                </button>
+                                <a href="{% url 'transaction_list' %}" class="btn">
+                                    <i class="ti ti-x me-2"></i>
+                                    Cancel
+                                </a>
+                            </div>
+                            
+                            {% if transaction.id %}
+                            <a href="{% url 'delete_transaction' transaction.id %}" 
+                               class="btn btn-ghost-danger"
+                               data-bs-toggle="modal"
+                               data-bs-target="#modal-delete">
+                                <i class="ti ti-trash me-2"></i>
+                                Delete Transaction
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if transaction.id %}
+<!-- Delete Confirmation Modal -->
+<div class="modal modal-blur fade" id="modal-delete" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-status bg-danger"></div>
+            <div class="modal-body text-center py-4">
+                <i class="ti ti-alert-circle icon mb-2 text-danger icon-lg"></i>
+                <h3>Are you sure?</h3>
+                <div class="text-muted">
+                    Do you really want to delete this transaction? This action cannot be undone.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="w-100">
+                    <div class="row">
+                        <div class="col">
+                            <button type="button" class="btn w-100" data-bs-dismiss="modal">
+                                Cancel
+                            </button>
+                        </div>
+                        <div class="col">
+                            <a href="{% url 'delete_transaction' transaction.id %}" class="btn btn-danger w-100">
+                                Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

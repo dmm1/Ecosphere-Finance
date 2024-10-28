@@ -1,0 +1,183 @@
+{% extends 'finance/base.html' %}
+
+{% block content %}
+    <div class="page-header d-print-none">
+        <div class="container-xl">
+            <div class="row g-2 align-items-center">
+                <div class="col">
+                    <div class="page-pretitle">Dashboard</div>
+                    <h2 class="page-title">Personal Finance Manager</h2>
+                </div>
+                <div class="col-auto ms-auto">
+                    <div class="btn-list">
+                        <a href="{% url 'export_transactions_pdf' %}" class="btn btn-primary d-none d-sm-inline-block">
+                            <i class="ti ti-file-text me-2"></i>
+                            Export as PDF
+                        </a>
+                        <a href="{% url 'export_transactions_excel' %}" class="btn btn-success d-none d-sm-inline-block">
+                            <i class="ti ti-table me-2"></i>
+                            Export as Excel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="page-body">
+        <div class="container-xl">
+            <!-- Quick Actions -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="text-center">
+                                <p class="text-muted mb-4">Track your income and expenses and visualize your spendings.</p>
+                                <div class="btn-list justify-content-center">
+                                    <a href="{% url 'transaction_list' %}" class="btn btn-primary">
+                                        <i class="ti ti-list me-2"></i>
+                                        View Transactions
+                                    </a>
+                                    <a href="{% url 'add_transaction' %}" class="btn btn-success">
+                                        <i class="ti ti-plus me-2"></i>
+                                        Add Transaction
+                                    </a>
+                                    <a href="{% url 'visualize_expenses' %}" class="btn btn-info">
+                                        <i class="ti ti-chart-pie me-2"></i>
+                                        Visualize Expenses
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Summary Cards -->
+            <div class="row mb-4">
+                <div class="col-sm-6 col-lg-4">
+                    <div class="card card-sm">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <span class="bg-green text-white avatar">
+                                        <i class="ti ti-arrow-up-right"></i>
+                                    </span>
+                                </div>
+                                <div class="col">
+                                    <div class="font-weight-medium">Income</div>
+                                    <div class="text-muted">${{ income }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-4">
+                    <div class="card card-sm">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <span class="bg-red text-white avatar">
+                                        <i class="ti ti-arrow-down-right"></i>
+                                    </span>
+                                </div>
+                                <div class="col">
+                                    <div class="font-weight-medium">Expenses</div>
+                                    <div class="text-muted">${{ expenses }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-4">
+                    <div class="card card-sm">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <span class="bg-blue text-white avatar">
+                                        <i class="ti ti-piggy-bank"></i>
+                                    </span>
+                                </div>
+                                <div class="col">
+                                    <div class="font-weight-medium">Net Savings</div>
+                                    <div class="text-muted">${{ savings }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Transactions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">Recent Transactions</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Category</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions %}
+                                    <tr>
+                                        <td>{{ transaction.date }}</td>
+                                        <td>{{ transaction.category }}</td>
+                                        <td>
+                                            <span class="badge {% if transaction.transaction_type == 'Income' %}bg-green{% else %}bg-red{% endif %}" style="color:white;">
+                                                {{ transaction.transaction_type }}
+                                            </span>
+                                        </td>
+                                        <td>${{ transaction.amount }}</td>
+                                        <td>{{ transaction.description }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer d-flex align-items-center">
+                        <a href="{% url 'transaction_list' %}" class="btn btn-link">View All Transactions</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Spending Categories -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Top Spending Categories</h3>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for category in top_categories %}
+                        <div class="list-group-item">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <div class="d-flex align-items-center">
+                                        <span class="avatar me-3 bg-blue-lt">
+                                            <i class="ti ti-category"></i>
+                                        </span>
+                                        <div>
+                                            {{ category.category__name }}
+                                            <div class="text-muted">${{ category.total_amount }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <div class="progress" style="width: 5rem">
+                                        <div class="progress-bar" style="width: {{ category.total_amount|divisibleby:100 }}%" role="progressbar"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

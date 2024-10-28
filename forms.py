@@ -1,22 +1,16 @@
 from django import forms
-from .models import Income, Expense, Budget, SavingsGoal
+from django.contrib.auth.models import User
+from django.contrib.auth.forms import UserCreationForm
+from .models import Transaction
 
-class IncomeForm(forms.ModelForm):
+class TransactionForm(forms.ModelForm):
     class Meta:
-        model = Income
-        fields = ['amount', 'source', 'date_received', 'description']
-
-class ExpenseForm(forms.ModelForm):
-    class Meta:
-        model = Expense
-        fields = ['amount', 'category', 'date_spent', 'description', 'is_recurring', 'recurrence_frequency']
-
-class BudgetForm(forms.ModelForm):
-    class Meta:
-        model = Budget
-        fields = ['category', 'limit', 'start_date', 'end_date']
-
-class SavingsGoalForm(forms.ModelForm):
-    class Meta:
-        model = SavingsGoal
-        fields = ['goal_name', 'target_amount', 'current_amount', 'target_date']
+        model = Transaction
+        fields = ['date', 'amount', 'category', 'transaction_type', 'description'] # Ensure 'date' is included
+        widgets = {
+            'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Amount'}),
+            'category': forms.Select(attrs={'class': 'form-control'}),
+            'transaction_type': forms.Select(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }

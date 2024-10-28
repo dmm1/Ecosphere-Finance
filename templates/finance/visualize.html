@@ -1,0 +1,40 @@
+{% extends 'finance/base.html' %}
+
+{% block content %}
+<div class="page-header d-print-none">
+    <div class="container-xl">
+        <div class="row g-2 align-items-center">
+            <div class="col">
+                <div class="page-pretitle">Analytics</div>
+                <h2 class="page-title">Expenses by Category</h2>
+            </div>
+            <!-- Optional: Add export or time period filters here -->
+            <div class="col-auto ms-auto">
+                <div class="btn-list">
+                    <a href="#" class="btn btn-outline-primary d-none d-sm-inline-block" onclick="window.print()">
+                        <i class="ti ti-printer me-2"></i>
+                        Print Chart
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-center">
+                    <img 
+                        src="data:image/png;base64,{{ image }}" 
+                        alt="Expenses by Category" 
+                        class="img-fluid rounded"
+                        style="max-height: 600px; width: auto;"
+                    >
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

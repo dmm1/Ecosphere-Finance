@@ -1,0 +1,131 @@
+{% extends 'finance/base.html' %}
+
+{% block content %}
+<div class="page-header d-print-none">
+    <div class="container-xl">
+        <div class="row g-2 align-items-center">
+            <div class="col">
+                <div class="page-pretitle">Overview</div>
+                <h2 class="page-title">Personal Transactions</h2>
+            </div>
+            <div class="col-auto ms-auto">
+                <div class="btn-list">
+                    <a href="{% url 'export_transactions_pdf' %}" class="btn btn-primary d-none d-sm-inline-block">
+                        <i class="ti ti-file-text me-2"></i>
+                        Export as PDF
+                    </a>
+                    <a href="{% url 'export_transactions_excel' %}" class="btn btn-success d-none d-sm-inline-block">
+                        <i class="ti ti-table me-2"></i>
+                        Export as Excel
+                    </a>
+                    <!-- Dropdown for mobile view -->
+                    <div class="d-sm-none">
+                        <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="ti ti-download me-2"></i>
+                            Export
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end">
+                            <a class="dropdown-item" href="{% url 'export_transactions_pdf' %}">
+                                <i class="ti ti-file-text me-2"></i>
+                                Export as PDF
+                            </a>
+                            <a class="dropdown-item" href="{% url 'export_transactions_excel' %}">
+                                <i class="ti ti-table me-2"></i>
+                                Export as Excel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+        <div class="card">
+            <div class="card-body">
+                <div id="table-default" class="table-responsive">
+                    <table class="table table-vcenter card-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Category</th>
+                                <th>Type</th>
+                                <th class="w-1">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transactions %}
+                            <tr>
+                                <td>{{ transaction.date }}</td>
+                                <td class="{% if transaction.transaction_type == 'Income' %}text-success{% else %}text-danger{% endif %}">
+                                    ${{ transaction.amount }}
+                                </td>
+                                <td>
+                                    <span class="badge bg-blue-lt">
+                                        {{ transaction.category }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge {% if transaction.transaction_type == 'Income' %}bg-green{% else %}bg-red{% endif %}">
+                                        {{ transaction.transaction_type }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-list flex-nowrap">
+                                        <a href="{% url 'edit_transaction' transaction.id %}" class="btn btn-icon btn-ghost-yellow" title="Edit transaction">
+                                            <i class="ti ti-edit"></i>
+                                        </a>
+                                        <a href="{% url 'delete_transaction' transaction.id %}" 
+                                           class="btn btn-icon btn-ghost-red" 
+                                           data-bs-toggle="modal" 
+                                           data-bs-target="#modal-delete-{{ transaction.id }}" 
+                                           title="Delete transaction">
+                                            <i class="ti ti-trash"></i>
+                                        </a>
+                                    </div>
+                                    <!-- Delete Confirmation Modal -->
+                                    <div class="modal modal-blur fade" id="modal-delete-{{ transaction.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                        <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+                                            <div class="modal-content">
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                <div class="modal-status bg-danger"></div>
+                                                <div class="modal-body text-center py-4">
+                                                    <i class="ti ti-alert-circle icon mb-2 text-danger icon-lg"></i>
+                                                    <h3>Are you sure?</h3>
+                                                    <div class="text-muted">
+                                                        Do you really want to delete this transaction? This action cannot be undone.
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <div class="w-100">
+                                                        <div class="row">
+                                                            <div class="col">
+                                                                <button type="button" class="btn w-100" data-bs-dismiss="modal">
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                            <div class="col">
+                                                                <a href="{% url 'delete_transaction' transaction.id %}" class="btn btn-danger w-100">
+                                                                    Delete
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

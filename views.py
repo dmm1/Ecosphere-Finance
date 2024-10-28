@@ -1,309 +1,157 @@
-from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
-from .models import Income, Expense, Budget, SavingsGoal
-from django.utils import timezone
-from django.views.decorators.http import require_http_methods
+import matplotlib
+import openpyxl
+from django.http import HttpResponse
+from openpyxl.styles import Font
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+matplotlib.use('Agg') # Use a non-interactive backend
+import base64
+from io import BytesIO
+import matplotlib.pyplot as plt
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login, logout
+from .forms import TransactionForm
+from .models import Transaction, Category
 from django.db.models import Sum
-from django.db.models.functions import TruncMonth
-import json
-from datetime import timedelta
 
-def dashboard(request):
-    """Render the dashboard page and update recurring expenses."""
-    update_recurring_expenses(request)
-    return render(request, 'finance/dashboard.html')
+@login_required
+def transaction_list(request):
+    transactions = Transaction.objects.filter(user=request.user)
+    return render(request, 'finance/transaction_list.html', {'transactions': transactions})
 
-def update_recurring_expenses(request):
-    """Update recurring expenses by creating new records for those that are due."""
-    today = timezone.now().date()
-    recurring_expenses = Expense.objects.filter(is_recurring=True, next_due_date__lte=today)
+@login_required
+def visualize_expenses(request):
+    transactions = Transaction.objects.filter(user=request.user, transaction_type='expense')
+    categories = [t.category.name for t in transactions]
+    amounts = [t.amount for t in transactions]
 
-    for expense in recurring_expenses:
-        Expense.objects.create(
-            amount=expense.amount,
-            category=expense.category,
-            date_spent=today,
-            description=expense.description,
-            is_recurring=False
+    # Create the plot
+    plt.figure(figsize=(10, 5))
+    plt.bar(categories, amounts)
+    plt.xlabel('Category')
+    plt.ylabel('Amount')
+    plt.title('Expenses by Category')
+
+    # Save it to a buffer
+    buffer = BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    image_png = buffer.getvalue()
+    buffer.close()
+
+    # Encode the image to base64 so it can be rendered in the HTML
+    image = base64.b64encode(image_png).decode('utf-8')
+
+    # Pass the image to the template
+    return render(request, 'finance/visualize.html', {'image': image})
+
+@login_required
+def add_transaction(request):
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user # Assign the current user to the transaction
+            transaction.save()
+            return redirect('transaction_list')
+        else:
+            print(form.errors)  # Debug: Print form errors to console
+    else:
+        form = TransactionForm()
+    return render (request, 'finance/add_transaction.html', {'form': form})
+
+@login_required
+def delete_transaction(request, transaction_id):
+    transaction = Transaction.objects.get(pk=transaction_id)
+    transaction.delete()
+    return redirect('transaction_list') # Redirect to the transaction list page
+
+@login_required
+def edit_transaction(request, transaction_id):
+    transaction = Transaction.objects.get(pk=transaction_id)
+    if request.method == 'POST':
+        form = TransactionForm(request.POST, instance=transaction)
+        if form.is_valid():
+            form.save()
+            return redirect('transaction_list')
+    else:
+        form = TransactionForm(instance=transaction)
+    return render(request, 'finance/edit_transaction.html', {'form': form, 'transaction': transaction}) 
+
+# @login_required
+def home(request):
+    if request.user.is_authenticated:
+        transactions = Transaction.objects.filter(user=request.user).order_by('-date')[:5]
+        income = Transaction.objects.filter(user=request.user, transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
+        expenses = Transaction.objects.filter(user=request.user, transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
+        savings = income - expenses
+
+        top_categories = (
+            Transaction.objects.filter(user=request.user, transaction_type='expense')
+            .values('category__name')
+            .annotate(total_amount=Sum('amount'))
+            .order_by('-total_amount')[:3]
         )
-        expense.next_due_date = expense.calculate_next_due_date()
-        expense.save()
 
-    return JsonResponse({'status': 'success'})
-
-# AJAX CRUD operations for Expense
-@require_http_methods(["GET"])
-def expense_list(request):
-    """Return a list of all expenses."""
-    expenses = list(Expense.objects.values())
-    return JsonResponse({'status': 'success', 'expenses': expenses})
-
-@require_http_methods(["POST"])
-def expense_create(request):
-    """Create a new expense and return its details."""
-    try:
-        data = json.loads(request.body)
-        required_fields = ['amount', 'category']
-        for field in required_fields:
-            if field not in data:
-                return JsonResponse({'status': 'error', 'message': f'Missing field: {field}'}, status=400)
-
-        expense = Expense.objects.create(
-            amount=data['amount'],
-            category=data['category'],
-            date_spent=data.get('date_spent', timezone.now().date()),
-            description=data.get('description', ''),
-            is_recurring=data.get('is_recurring', False),
-            recurrence_frequency=data.get('recurrence_frequency')
-        )
-        return JsonResponse({
-            'status': 'success', 
-            'expense': {
-                'id': expense.id, 
-                'amount': str(expense.amount),
-                'category': expense.category,
-                'date_spent': expense.date_spent.isoformat(),
-                'description': expense.description
-            }
+        return render(request, 'finance/home.html', {
+            'transactions': transactions,
+            'income': income,
+            'expenses': expenses,
+            'savings': savings,
+            'top_categories': top_categories,
         })
-    except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-@require_http_methods(["POST"])
-def expense_update(request, expense_id):
-    """Update an existing expense and return its updated details."""
-    expense = get_object_or_404(Expense, id=expense_id)
-
-    try:
-        data = json.loads(request.body)
-        expense.amount = data['amount']
-        expense.category = data['category']
-        expense.description = data.get('description', '')
-        expense.date_spent = data.get('date_spent', expense.date_spent)
-        expense.is_recurring = data.get('is_recurring', expense.is_recurring)
-        expense.recurrence_frequency = data.get('recurrence_frequency', expense.recurrence_frequency)
-        expense.save()
-        return JsonResponse({'status': 'success'})
-    except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-@require_http_methods(["DELETE"])
-def expense_delete(request, expense_id):
-    """Delete an existing expense."""
-    expense = get_object_or_404(Expense, id=expense_id)
-    expense.delete()
-    return JsonResponse({'status': 'success'})
-
-# AJAX CRUD operations for Income
-@require_http_methods(["GET"])
-def income_list(request):
-    """Return a list of all incomes."""
-    incomes = list(Income.objects.values())
-    return JsonResponse({'status': 'success', 'incomes': incomes})
-
-@require_http_methods(["POST"])
-def income_create(request):
-    """Create a new income and return its details."""
-    try:
-        data = json.loads(request.body)
-        required_fields = ['amount', 'source']
-        for field in required_fields:
-            if field not in data:
-                return JsonResponse({'status': 'error', 'message': f'Missing field: {field}'}, status=400)
-
-        income = Income.objects.create(
-            amount=data['amount'],
-            source=data['source'],
-            date_received=data.get('date_received', timezone.now().date()),
-            description=data.get('description', '')
-        )
-        return JsonResponse({
-            'status': 'success', 
-            'income': {
-                'id': income.id, 
-                'amount': str(income.amount),
-                'source': income.source,
-                'date_received': income.date_received.isoformat(),
-                'description': income.description
-            }
-        })
-    except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-@require_http_methods(["POST"])
-def income_update(request, income_id):
-    """Update an existing income and return its updated details."""
-    income = get_object_or_404(Income, id=income_id)
-
-    try:
-        income.amount = request.POST['amount']
-        income.source = request.POST['source']
-        income.description = request.POST.get('description', '')
-        income.date_received = request.POST.get('date_received', income.date_received)
-        income.save()
-        return JsonResponse({'status': 'success'})
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-@require_http_methods(["DELETE"])
-def income_delete(request, income_id):
-    """Delete an existing income."""
-    income = get_object_or_404(Income, id=income_id)
-    income.delete()
-    return JsonResponse({'status': 'success'})
-
-# AJAX CRUD operations for Budget
-@require_http_methods(["GET"])
-def budget_list(request):
-    """Return a list of all budgets."""
-    budgets = list(Budget.objects.values())
-    return JsonResponse({'status': 'success', 'budgets': budgets})
-
-@require_http_methods(["POST"])
-def budget_create(request):
-    """Create a new budget and return its details."""
-    try:
-        data = json.loads(request.body)
-        required_fields = ['category', 'limit']
-        for field in required_fields:
-            if field not in data:
-                return JsonResponse({'status': 'error', 'message': f'Missing field: {field}'}, status=400)
-
-        budget = Budget.objects.create(
-            category=data['category'],
-            limit=data['limit'],
-            start_date=data.get('start_date', timezone.now().date()),
-            end_date=data.get('end_date', timezone.now().date())
-        )
-        return JsonResponse({
-            'status': 'success', 
-            'budget': {
-                'id': budget.id, 
-                'category': budget.category,
-                'limit': str(budget.limit),
-                'start_date': budget.start_date.isoformat(),
-                'end_date': budget.end_date.isoformat()
-            }
-        })
-    except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-@require_http_methods(["POST"])
-def budget_update(request, budget_id):
-    """Update an existing budget and return its updated details."""
-    budget = get_object_or_404(Budget, id=budget_id)
-
-    try:
-        data = json.loads(request.body)
-        budget.category = data['category']
-        budget.limit = data['limit']
-        budget.start_date = data.get('start_date', budget.start_date)
-        budget.end_date = data.get('end_date', budget.end_date)
-        budget.save()
-        return JsonResponse({'status': 'success'})
-    except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-@require_http_methods(["DELETE"])
-def budget_delete(request, budget_id):
-    """Delete an existing budget."""
-    budget = get_object_or_404(Budget, id=budget_id)
-    budget.delete()
-    return JsonResponse({'status': 'success'})
-
-# AJAX CRUD operations for SavingsGoal
-@require_http_methods(["GET"])
-def savings_goal_list(request):
-    """Return a list of all savings goals."""
-    savings_goals = list(SavingsGoal.objects.values())
-    return JsonResponse({'status': 'success', 'savings_goals': savings_goals})
-
-@require_http_methods(["POST"])
-def savings_goal_create(request):
-    """Create a new savings goal and return its details."""
-    try:
-        data = json.loads(request.body)
-        required_fields = ['goal_name', 'target_amount']
-        for field in required_fields:
-            if field not in data:
-                return JsonResponse({'status': 'error', 'message': f'Missing field: {field}'}, status=400)
-
-        savings_goal = SavingsGoal.objects.create(
-            goal_name=data['goal_name'],
-            target_amount=data['target_amount'],
-            current_amount=data.get('current_amount', 0),
-            target_date=data.get('target_date')
-        )
-        return JsonResponse({
-            'status': 'success', 
-            'savings_goal': {
-                'id': savings_goal.id, 
-                'goal_name': savings_goal.goal_name,
-                'target_amount': str(savings_goal.target_amount),
-                'current_amount': str(savings_goal.current_amount),
-                'target_date': savings_goal.target_date.isoformat() if savings_goal.target_date else None
-            }
-        })
-    except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-@require_http_methods(["POST"])
-def savings_goal_update(request, savings_goal_id):
-    """Update an existing savings goal and return its updated details."""
-    savings_goal = get_object_or_404(SavingsGoal, id=savings_goal_id)
-
-    try:
-        data = json.loads(request.body)
-        savings_goal.goal_name = data['goal_name']
-        savings_goal.target_amount = data['target_amount']
-        savings_goal.current_amount = data.get('current_amount', savings_goal.current_amount)
-        savings_goal.target_date = data.get('target_date', savings_goal.target_date)
-        savings_goal.save()
-        return JsonResponse({'status': 'success'})
-    except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'}, status=400)
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-@require_http_methods(["DELETE"])
-def savings_goal_delete(request, savings_goal_id):
-    """Delete an existing savings goal."""
-    savings_goal = get_object_or_404(SavingsGoal, id=savings_goal_id)
-    savings_goal.delete()
-    return JsonResponse({'status': 'success'})
-
-# Chart data functions
-@require_http_methods(["GET"])
-def expense_chart_data(request):
-    """Return aggregated expense data for charting."""
-    expenses = Expense.objects.annotate(month=TruncMonth('date_spent')).values('month').annotate(total=Sum('amount')).order_by('month')
-    chart_data = {expense['month'].strftime('%Y-%m'): expense['total'] for expense in expenses}
-    return JsonResponse({'status': 'success', 'chart_data': chart_data})
-
-@require_http_methods(["GET"])
-def income_chart_data(request):
-    """Return aggregated income data for charting."""
-    incomes = Income.objects.annotate(month=TruncMonth('date_received')).values('month').annotate(total=Sum('amount')).order_by('month')
-    chart_data = {income['month'].strftime('%Y-%m'): income['total'] for income in incomes}
-    return JsonResponse({'status': 'success', 'chart_data': chart_data})
-
-@require_http_methods(["GET"])
-def budget_chart_data(request):
-    """Return aggregated budget data for charting."""
-    budgets = Budget.objects.values('category').annotate(total=Sum('limit'))
-    chart_data = {budget['category']: budget['total'] for budget in budgets}
-    return JsonResponse({'status': 'success', 'chart_data': chart_data})
+    else:
+        return render(request, 'finance/home.html')
 
 
+@login_required
+def export_transactions_pdf(request):
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="transactions_report.pdf"'
+
+    p = canvas.Canvas(response, pagesize=letter)
+    p.setTitle('Transactions Report')
+
+    transactions = Transaction.objects.filter(user=request.user)
+
+    p.drawString(100, 750, 'Transactions Report')
+    p.drawString(100, 730, '----------------------------------------')
+
+    y = 710
+    for transaction in transactions:
+        p.drawString(100, y, f'{transaction.date} - {transaction.transaction_type} - {transaction.amount}')
+        y -= 20
+
+    p.showPage()
+    p.save()
+
+    return response
+
+@login_required
+def export_transactions_excel(request):
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="transactions_report.xlsx"'
+
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = 'Transactions Report'
+
+    # Define the header row
+    headers = ['Date', 'Transaction Type', 'Amount', 'Category', 'Description']
+    for col_num, header in enumerate(headers, 1):
+        cell = worksheet.cell(row=1, column=col_num)
+        cell.value = header
+        cell.font = Font(bold=True)
+
+    # Add the data rows
+    transactions = Transaction.objects.filter(user=request.user)
+    for row_num, transaction in enumerate(transactions, 2):
+        worksheet.cell(row=row_num, column=1).value = transaction.date.strftime('%Y-%m-%d')
+        worksheet.cell(row=row_num, column=2).value = transaction.transaction_type
+        worksheet.cell(row=row_num, column=3).value = transaction.amount
+        worksheet.cell(row=row_num, column=4).value = transaction.category.name if transaction.category else ''
+        worksheet.cell(row=row_num, column=5).value = transaction.description
+
+    workbook.save(response)
+    return response

@@ -17,9 +17,10 @@ from .models import Transaction, Category
 from django.shortcuts import render
 from django.db.models import Sum
 from .models import Transaction
-from .utils import update_recurring_expenses
+from .utils import update_recurring_expenses, get_upcoming_transactions
 from django.utils import timezone
-from datetime import timedelta, date, datetime
+from datetime import timedelta, date
+import datetime
 
 @login_required
 def visualize_expenses(request):
@@ -106,52 +107,54 @@ def edit_transaction(request, transaction_id):
 
 @login_required
 def home(request):
-    if request.user.is_authenticated:
-        # Update recurring transactions
-        update_recurring_expenses()
+    # Update recurring transactions
+    update_recurring_expenses()
 
-        # Retrieve the latest transactions and calculate finance metrics
-        transactions = Transaction.objects.filter(user=request.user).order_by('-date')[:5]
-        income = Transaction.objects.filter(user=request.user, transaction_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
-        expenses = Transaction.objects.filter(user=request.user, transaction_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
-        savings = income - expenses
+    # Get recent transactions
+    recent_transactions = Transaction.objects.filter(
+        user=request.user,
+        is_automated=False  # Only show manual transactions in recent list
+    ).order_by('-date')[:5]
 
-        top_categories = (
-            Transaction.objects.filter(user=request.user, transaction_type='expense')
-            .values('category__name')
-            .annotate(total_amount=Sum('amount'))
-            .order_by('-total_amount')[:3]
+    # Calculate financial metrics
+    income = Transaction.objects.filter(
+        user=request.user, 
+        transaction_type='income'
+    ).aggregate(Sum('amount'))['amount__sum'] or 0
+
+    expenses = Transaction.objects.filter(
+        user=request.user, 
+        transaction_type='expense'
+    ).aggregate(Sum('amount'))['amount__sum'] or 0
+
+    savings = income - expenses
+
+    # Get top spending categories
+    top_categories = (
+        Transaction.objects.filter(
+            user=request.user, 
+            transaction_type='expense'
         )
+        .values('category__name')
+        .annotate(total_amount=Sum('amount'))
+        .order_by('-total_amount')[:3]
+    )
 
-        # Upcoming transactions with a frequency set
-        upcoming_income = Transaction.objects.filter(
-            user=request.user,
-            transaction_type='income',
-            next_due_date__gte=datetime.now(),
-            frequency__isnull=False, # Ensure frequency is set
-            is_automated=True
-        ).order_by('next_due_date')
+    # Get upcoming transactions for next 30 days
+    upcoming_income, upcoming_expenses = get_upcoming_transactions(
+        user=request.user,
+        days_ahead=30
+    )
 
-        upcoming_expenses = Transaction.objects.filter(
-            user=request.user,
-            transaction_type='expense',
-            next_due_date__gte=datetime.now(),
-            frequency__isnull=False,  # Ensure frequency is set
-            is_automated=True
-        ).order_by('next_due_date')
-
-        return render(request, 'finance/home.html', {
-            'transactions': transactions,
-            'income': income,
-            'expenses': expenses,
-            'savings': savings,
-            'top_categories': top_categories,
-            'upcoming_income': upcoming_income,
-            'upcoming_expenses': upcoming_expenses,
-        })
-    else:
-        return render(request, 'finance/home.html')
-
+    return render(request, 'finance/home.html', {
+        'transactions': recent_transactions,
+        'income': income,
+        'expenses': expenses,
+        'savings': savings,
+        'top_categories': top_categories,
+        'upcoming_income': upcoming_income,
+        'upcoming_expenses': upcoming_expenses,
+    })
 
 
 @login_required

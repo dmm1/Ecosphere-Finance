@@ -131,8 +131,8 @@
                             <td>{{ transaction.date }}</td>
                             <td>{{ transaction.category }}</td>
                             <td>
-                                <span class="badge {% if transaction.transaction_type == 'Income' %}bg-green{% else %}bg-red{% endif %}" style="color:white;">
-                                    {{ transaction.transaction_type }}
+                                <span class="badge {% if transaction.transaction_type == 'income' %}bg-green{% else %}bg-red{% endif %}" style="color:white;">
+                                    {{ transaction.transaction_type|capfirst }}
                                 </span>
                             </td>
                             <td>${{ transaction.amount }}</td>
@@ -154,42 +154,60 @@
 </div>
 
 
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Upcoming Transactions</h3>
-                        </div>
-                        <div class="card-body">
-                            <h5>Upcoming Income</h5>
-                            {% if upcoming_income %}
-                                <ul class="list-group">
-                                    {% for transaction in upcoming_income %}
-                                        <li class="list-group-item">
-                                            {{ transaction.next_due_date }} - ${{ transaction.amount }} - {{ transaction.category }} - {{ transaction.description }}
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            {% else %}
-                                <p>No upcoming income transactions.</p>
-                            {% endif %}
-            
-                            <h5>Upcoming Expenses</h5>
-                            {% if upcoming_expenses %}
-                                <ul class="list-group">
-                                    {% for transaction in upcoming_expenses %}
-                                        <li class="list-group-item">
-                                            {{ transaction.next_due_date }} - ${{ transaction.amount }} - {{ transaction.category }} - {{ transaction.description }}
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            {% else %}
-                                <p>No upcoming expense transactions.</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
+<!-- Upcoming Transactions -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 class="card-title">Upcoming Transactions</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in upcoming_income %}
+                        <tr>
+                            <td>{{ transaction.next_due_date|date:"F j, Y" }}</td>
+                            <td>{{ transaction.category }}</td>
+                            <td>
+                                <span class="badge bg-green" style="color:white;">
+                                    {{ transaction.transaction_type|capfirst }}
+                                </span>
+                            </td>
+                            <td>${{ transaction.amount }}</td>
+                            <td>{{ transaction.description }}</td>
+                        </tr>
+                    {% endfor %}
+                    {% for transaction in upcoming_expenses %}
+                        <tr>
+                            <td>{{ transaction.next_due_date|date:"F j, Y" }}</td>
+                            <td>{{ transaction.category }}</td>
+                            <td>
+                                <span class="badge bg-red" style="color:white;">
+                                    {{ transaction.transaction_type|capfirst }}
+                                </span>
+                            </td>
+                            <td>${{ transaction.amount }}</td>
+                            <td>{{ transaction.description }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex align-items-center">
+            <a href="{% url 'transaction_list' %}" class="btn btn-link">View All Transactions</a>
+        </div>
+    </div>
+</div>
+
+
             
             <!-- Top Spending Categories -->
             <div class="card">

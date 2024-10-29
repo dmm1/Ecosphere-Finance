@@ -123,17 +123,21 @@ def home(request):
             .order_by('-total_amount')[:3]
         )
 
-        # Upcoming transactions
+        # Upcoming transactions with a frequency set
         upcoming_income = Transaction.objects.filter(
             user=request.user,
             transaction_type='income',
-            next_due_date__gte=timezone.now()
+            next_due_date__gte=datetime.now(),
+            frequency__isnull=False, # Ensure frequency is set
+            is_automated=True
         ).order_by('next_due_date')
 
         upcoming_expenses = Transaction.objects.filter(
             user=request.user,
             transaction_type='expense',
-            next_due_date__gte=timezone.now()
+            next_due_date__gte=datetime.now(),
+            frequency__isnull=False,  # Ensure frequency is set
+            is_automated=True
         ).order_by('next_due_date')
 
         return render(request, 'finance/home.html', {

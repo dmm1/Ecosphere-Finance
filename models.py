@@ -27,6 +27,7 @@ class Transaction(models.Model):
     frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, blank=True, null=True)
     is_income = models.BooleanField(default=False)  
     next_due_date = models.DateField(blank=True, null=True)
+    is_automated = models.BooleanField(default=False) 
 
     def save(self, *args, **kwargs):
         if self.frequency and not self.next_due_date:

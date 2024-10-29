@@ -127,13 +127,13 @@ def home(request):
         upcoming_income = Transaction.objects.filter(
             user=request.user,
             transaction_type='income',
-            next_due_date__gte=datetime.now()
+            next_due_date__gte=timezone.now()
         ).order_by('next_due_date')
 
         upcoming_expenses = Transaction.objects.filter(
             user=request.user,
             transaction_type='expense',
-            next_due_date__gte=datetime.now()
+            next_due_date__gte=timezone.now()
         ).order_by('next_due_date')
 
         return render(request, 'finance/home.html', {

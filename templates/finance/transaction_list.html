@@ -53,6 +53,7 @@
                                 <th>Amount</th>
                                 <th>Category</th>
                                 <th>Type</th>
+                                <th>Description</th>  <!-- Added Description column -->
                                 <th class="w-1">Actions</th>
                             </tr>
                         </thead>
@@ -72,6 +73,12 @@
                                     <span class="badge {% if transaction.transaction_type == 'Income' %}bg-green{% else %}bg-red{% endif %}">
                                         {{ transaction.transaction_type }}
                                     </span>
+                                </td>
+                                <td>
+                                    {{ transaction.description }}
+                                    {% if transaction.is_automated %}
+                                        <span class="text-muted">(Automated)</span>  <!-- Indication for automated transactions -->
+                                    {% endif %}
                                 </td>
                                 <td>
                                     <div class="btn-list flex-nowrap">

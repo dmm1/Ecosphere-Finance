@@ -44,6 +44,6 @@ Please notice that you will need login via backend as this app does not have a l
 5. Start the development server
 
 ### Screenshots
-![alt 1](https://github.com/dmm1/Ecosphere-Finance/blob/main/1.png?raw=true)
-![alt 2](https://github.com/dmm1/Ecosphere-Finance/blob/main/2.png?raw=true)
-![alt 3](https://github.com/dmm1/Ecosphere-Finance/blob/main/3.png?raw=true)
+![alt 1](https://github.com/dmm1/Ecosphere-Finance/blob/main/docs/images/1.png?raw=true)
+![alt 2](https://github.com/dmm1/Ecosphere-Finance/blob/main/docs/images/2.png?raw=true)
+![alt 3](https://github.com/dmm1/Ecosphere-Finance/blob/main/docs/images/3.png?raw=true)

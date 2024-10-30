@@ -32,16 +32,20 @@ The following apps are currently/soon available for Public:
 
 ### Installation
 
-#### Integrate it in ohter Ecosphere apps
+#### Integrate it in other Ecosphere apps
 tbd
 #### Standalone
 Please notice that you will need login via backend as this app does not have a login/logout.
 
-1. Clone the repository
-2. Install the dependencies
-3. add "finance" to settings.py
-4. Run the migrations
-5. Start the development server
+
+1. if you dont have started a project you can do it with the following command:
+django-admin startproject myproject
+2. Clone the repository https://github.com/dmm1/Ecosphere-Finance.git into your project directory,
+name the folder "finance"
+3. Install the dependencies
+4. add "finance" to the apps section in settings.py
+5. Run the migrations
+6. Start the development server
 
 ### Screenshots
 ![alt 1](https://github.com/dmm1/Ecosphere-Finance/blob/main/docs/images/1.png?raw=true)

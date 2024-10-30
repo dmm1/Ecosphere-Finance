@@ -24,7 +24,7 @@ Now im focusing on optimization, localization and security befor developing new 
 ## Integraton
 This App is part of the Ecosphere project. You can eighter use it standalone or integrate it with other Ecosphere apps wich are indeed for private usage. 
 
-The following apps are currently available for Public:
+The following apps are currently/soon available for Public:
 
 - Ecosphere Accounts
 - Ecosphere Life
@@ -36,9 +36,14 @@ The following apps are currently available for Public:
 tbd
 #### Standalone
 Please notice that you will need login via backend as this app does not have a login/logout.
-tbd
+
+1. Clone the repository
+2. Install the dependencies
+3. add "finance" to settings.py
+4. Run the migrations
+5. Start the development server
 
 ### Screenshots
-![alt text](https://github.com/dmm1/Ecosphere-Finance/blob/master/1.png?raw=true)
-![alt text](https://github.com/dmm1/Ecosphere-Finance/blob/master/2.png?raw=true)
-![alt text](https://github.com/dmm1/Ecosphere-Finance/blob/master/3.png?raw=true)
+![alt 1](https://github.com/dmm1/Ecosphere-Finance/blob/main/1.png?raw=true)
+![alt 2](https://github.com/dmm1/Ecosphere-Finance/blob/main/2.png?raw=true)
+![alt 3](https://github.com/dmm1/Ecosphere-Finance/blob/main/3.png?raw=true)

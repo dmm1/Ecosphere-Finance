@@ -39,3 +39,6 @@ Please notice that you will need login via backend as this app does not have a l
 tbd
 
 ### Screenshots
+![alt text](https://github.com/dmm1/Ecosphere-Finance/blob/master/1.png?raw=true)
+![alt text](https://github.com/dmm1/Ecosphere-Finance/blob/master/2.png?raw=true)
+![alt text](https://github.com/dmm1/Ecosphere-Finance/blob/master/3.png?raw=true)
